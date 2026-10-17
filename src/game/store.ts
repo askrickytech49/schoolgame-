@@ -168,7 +168,7 @@ export function completeJob(id: string, nearby: string | null): Result {
   return { ok: true, msg: `Earned ${formatNaira(job.pay)} from ${job.title}`, bonus: adv.bonus };
 }
 
-export function useItem(id: string): Result {
+export function consumeItem(id: string): Result {
   const item = ITEMS[id];
   const s = state;
   if (!item?.use || !s.inventory[id]) return { ok: false, msg: "Can't use that" };
