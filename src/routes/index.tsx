@@ -1,24 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GameRoot } from "@/components/game/GameRoot";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Campus Life (OOPOLY Edition) — Student life sim prototype" },
+      { name: "description", content: "Explore an illustrative polytechnic campus in Aba: attend lectures, hustle for virtual naira, eat, rest and level up. Unofficial fan prototype." },
+      { property: "og:title", content: "Campus Life (OOPOLY Edition)" },
+      { property: "og:description", content: "A browser life-sim prototype about student life — lectures, hustles and jollof on an illustrative Aba campus." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: GameRoot,
 });
-
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
