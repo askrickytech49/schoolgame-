@@ -1,19 +1,20 @@
-import { useEffect, useRef } from "react";
-import { Flame, Zap, Smile, Wallet, Clock, Target, Pause, Smartphone, Map, GraduationCap, Briefcase, Users, Backpack, UserRound, Settings } from "lucide-react";
-import { BUILDINGS, OBJECTIVES, WORLD } from "@/game/data";
+import { useEffect, useId, useRef } from "react";
+import { Flame, Zap, Smile, Wallet, Clock, Target, Pause, Smartphone, Map, GraduationCap, Briefcase, Users, UserRound, Settings, FileCheck2 } from "lucide-react";
+import { CAMPUS_SPORTS, LOVE_GARDENS, MAP_LAYOUT, OBJECTIVES, WORLD, type MapPoint } from "@/game/data";
 import { formatNaira, formatTime, levelOf, useGame } from "@/game/store";
 import { livePos } from "./CampusScene";
 import { Avatar } from "./Avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type PanelId = "map" | "academics" | "hustles" | "social" | "inventory" | "profile" | "settings";
+export type PanelId = "map" | "academics" | "hustles" | "social" | "inventory" | "profile" | "settings" | "admissions";
 export const MENU: { id: PanelId; label: string; Icon: typeof Map }[] = [
   { id: "map", label: "Map", Icon: Map },
   { id: "academics", label: "Academics", Icon: GraduationCap },
   { id: "hustles", label: "Hustles", Icon: Briefcase },
   { id: "social", label: "Social", Icon: Users },
-  { id: "inventory", label: "Inventory", Icon: Backpack },
+  { id: "inventory", label: "Wallet", Icon: Wallet },
+  { id: "admissions", label: "Student Portal", Icon: FileCheck2 },
   { id: "profile", label: "Profile", Icon: UserRound },
   { id: "settings", label: "Settings", Icon: Settings },
 ];
@@ -44,7 +45,8 @@ export function Stats({ compact }: { compact?: boolean }) {
   );
 }
 
-export function Minimap({ nearby, size = 190 }: { nearby: string | null; size?: number }) {
+export function Minimap({ nearby, size = 190, route, destination, origin }: { nearby: string | null; size?: number; route?: MapPoint[]; destination?: MapPoint | null; origin?: MapPoint | null }) {
+  const mapId = useId().replaceAll(":", "");
   const dot = useRef<HTMLDivElement>(null);
   const h = (size * WORLD.h) / WORLD.w;
   const k = size / WORLD.w;
@@ -58,13 +60,56 @@ export function Minimap({ nearby, size = 190 }: { nearby: string | null; size?: 
     return () => cancelAnimationFrame(raf);
   }, [k]);
   return (
-    <div className="relative overflow-hidden rounded-xl border-2 border-maroon bg-grass" style={{ width: size, height: h }} aria-label="Minimap">
-      <div className="absolute bg-road" style={{ left: 1180 * k, top: 260 * k, width: 140 * k, height: 1440 * k }} />
-      <div className="absolute bg-road" style={{ left: 220 * k, top: 830 * k, width: 1980 * k, height: 110 * k }} />
-      {BUILDINGS.map((b) => (
-        <div key={b.id} title={b.name} className={cn("absolute rounded-sm", nearby === b.id ? "bg-accent" : "bg-maroon")} style={{ left: b.x * k, top: (b.y - b.h * 0.3) * k, width: b.w * k, height: Math.max(4, (b.d + b.h * 0.3) * k) }} />
-      ))}
-      <div ref={dot} className="absolute left-0 top-0 h-2.5 w-2.5 rounded-full border-2 border-cream bg-accent shadow" />
+    <div className="relative overflow-hidden rounded-xl border-2 border-[#77303a] bg-[#dfe9d4] shadow-[inset_0_0_0_4px_rgba(255,255,255,.38)]" style={{ width: size, height: h }} aria-label="Illustrated campus map">
+      <svg className="absolute inset-0" width={size} height={h} viewBox={`0 0 ${WORLD.w} ${WORLD.h}`} aria-hidden>
+        <defs>
+          <pattern id={`campus-map-grain-${mapId}`} width="88" height="88" patternUnits="userSpaceOnUse">
+            <circle cx="14" cy="18" r="5" fill="#8da77a" opacity=".27" /><circle cx="62" cy="50" r="3.5" fill="#6f8f67" opacity=".23" />
+          </pattern>
+          <filter id={`campus-map-shadow-${mapId}`} x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="14" stdDeviation="12" floodColor="#324332" floodOpacity=".24" /></filter>
+        </defs>
+        <rect width={WORLD.w} height={WORLD.h} fill="#dfe9d4" />
+        <rect width={WORLD.w} height={WORLD.h} fill={`url(#campus-map-grain-${mapId})`} />
+        {LOVE_GARDENS.map((garden) => <g key={garden.id}>
+          <rect x={garden.x} y={garden.y} width={garden.w} height={garden.h} rx="44" fill="#b8d0a1" stroke="#8ba97d" strokeWidth="8" />
+          <circle cx={garden.x + garden.w * .35} cy={garden.y + garden.h * .42} r="23" fill="#43885f" /><circle cx={garden.x + garden.w * .68} cy={garden.y + garden.h * .62} r="17" fill="#5a996a" />
+        </g>)}
+        <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+          {MAP_LAYOUT.roads.map((road, i) => <path key={`edge-${i}`} d={road.map((point, j) => `${j ? "L" : "M"} ${point.x} ${point.y}`).join(" ")} stroke="#aab39f" strokeWidth="112" />)}
+          {MAP_LAYOUT.roads.map((road, i) => <path key={`road-${i}`} d={road.map((point, j) => `${j ? "L" : "M"} ${point.x} ${point.y}`).join(" ")} stroke="#555b59" strokeWidth="88" />)}
+          {MAP_LAYOUT.roads.map((road, i) => <path key={`lane-${i}`} d={road.map((point, j) => `${j ? "L" : "M"} ${point.x} ${point.y}`).join(" ")} stroke="#eee5ca" strokeWidth="5" strokeDasharray="34 42" opacity=".8" />)}
+        </g>
+        {CAMPUS_SPORTS.map((area) => <g key={area.id} filter={`url(#campus-map-shadow-${mapId})`}>
+          <rect x={area.x} y={area.y} width={area.w} height={area.h} rx="38" fill={area.sport === "football" ? "#26734f" : area.sport === "basketball" ? "#bd6c3d" : "#397d91"} stroke="#f7f0dd" strokeWidth="13" />
+          <rect x={area.x + 26} y={area.y + 26} width={area.w - 52} height={area.h - 52} rx="24" fill="none" stroke="#dce7d9" strokeWidth="5" opacity=".86" />
+          {area.sport === "football" ? <><path d={`M ${area.x + area.w / 2} ${area.y + 28} v ${area.h - 56}`} stroke="#dce7d9" strokeWidth="5" /><circle cx={area.x + area.w / 2} cy={area.y + area.h / 2} r="50" fill="none" stroke="#dce7d9" strokeWidth="5" /></> : <path d={`M ${area.x + area.w / 2} ${area.y + 28} v ${area.h - 56}`} stroke="#dce7d9" strokeWidth="5" />}
+        </g>)}
+        {MAP_LAYOUT.buildings.map((building) => {
+          const top = building.y - building.h * .3, height = Math.max(30, building.d + building.h * .3);
+          const gate = building.id === "gate" || building.id === "small-gate";
+          const color = gate ? "#782a39" : building.id === "atm" ? "#d99a48" : "#f3ead6";
+          return <g key={building.id} filter={`url(#campus-map-shadow-${mapId})`}>
+            <rect x={building.x} y={top} width={building.w} height={height} rx="18" fill={color} stroke={nearby === building.id ? "#ffca59" : "#70434a"} strokeWidth={nearby === building.id ? "16" : "8"} />
+            <rect x={building.x + 12} y={top + 10} width={Math.max(12, building.w - 24)} height={Math.max(8, Math.min(22, height * .22))} rx="8" fill={gate ? "#e3a843" : "#c8a984"} opacity=".92" />
+            {building.w > 230 && <path d={`M ${building.x + 26} ${top + height * .65} h ${building.w - 52}`} stroke={gate ? "#e3a843" : "#9b8871"} strokeWidth="8" strokeLinecap="round" />}
+          </g>;
+        })}
+      </svg>
+      <div className="pointer-events-none absolute right-2 top-2 flex h-8 w-8 flex-col items-center justify-center rounded-full border border-white/80 bg-[#fffaf0]/90 text-[8px] font-black leading-none text-[#414743] shadow-sm"><span className="text-[11px] text-[#782a39]">↑</span>N</div>
+      {(route || destination || origin) && <svg className="pointer-events-none absolute inset-0 overflow-visible" width={size} height={h} viewBox={`0 0 ${WORLD.w} ${WORLD.h}`} aria-hidden>
+        {route && route.length > 1 && <polyline className="campus-route-flow" points={route.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke="#ffbf47" strokeWidth="24" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="38 22" />}
+        {origin && <circle cx={origin.x} cy={origin.y} r="38" fill="#27a4db" stroke="white" strokeWidth="12" />}
+        {destination && <>
+          <circle className="campus-destination-pulse" cx={destination.x} cy={destination.y} r="66" fill="#ffd36b" />
+          <g transform={`translate(${destination.x} ${destination.y})`}>
+            <g className="campus-destination-bob">
+              <path d="M 0 0 C -15 -22 -52 -55 -52 -94 A 52 52 0 1 1 52 -94 C 52 -55 15 -22 0 0 Z" fill="#7b1727" stroke="#ffd36b" strokeWidth="9" />
+              <circle cx="0" cy="-94" r="21" fill="#fff4dc" stroke="#ffd36b" strokeWidth="5" />
+            </g>
+          </g>
+        </>}
+      </svg>}
+      <div ref={dot} className="absolute left-0 top-0 h-3.5 w-3.5 rounded-full border-[3px] border-white bg-[#27a4db] shadow-[0_1px_5px_rgba(25,34,35,.8)]" />
     </div>
   );
 }
@@ -107,7 +152,7 @@ export function DesktopSidebar({ nearby, onMenu, onPause }: { nearby: string | n
         <Button variant="outline" size="icon" onClick={onPause} aria-label="Pause (Esc)"><Pause /></Button>
       </div>
       <div className="flex items-center justify-between rounded-xl bg-charcoal p-3 text-cream">
-        <span className="inline-flex items-center gap-2 text-sm"><Wallet className="h-4 w-4 text-gold" /> Wallet</span>
+        <span className="inline-flex items-center gap-2 text-sm"><Wallet className="h-4 w-4 text-gold" /> Game money</span>
         <span className="font-display text-xl font-bold text-gold">{formatNaira(s.cash)}</span>
       </div>
       <Clock_ />
@@ -121,23 +166,36 @@ export function DesktopSidebar({ nearby, onMenu, onPause }: { nearby: string | n
           </button>
         ))}
       </nav>
-      <p className="mt-auto text-[11px] text-muted-foreground">WASD/arrows move · E interact · M phone · Esc pause</p>
+      <p className="mt-auto text-[11px] text-muted-foreground">WASD/arrows move · Shift run · E interact · M phone · Esc pause</p>
     </aside>
   );
 }
 
-export function MobileTopBar({ nearby, onPause }: { nearby: string | null; onPause: () => void }) {
+export function MobileTopBar({ nearby, onPause, onOpenTask }: { nearby: string | null; onPause: () => void; onOpenTask: (panel: PanelId) => void }) {
   const s = useGame();
+  const taskGuide = {
+    "not-started": "Speak with the admissions guide at the Big Gate.",
+    "form-needed": "Open Phone → Student Portal and buy the application form for ₦2,500.",
+    "scratch-needed": "Open Student Portal and buy the scratch card for ₦700.",
+    "portal-ready": "Open Student Portal to check your admission result.",
+    admitted: OBJECTIVES[s.objective]?.text ?? "Collect your student ID at the Student Service Point.",
+  }[s.admissionStage];
+  const portalActionAvailable = s.admissionStage === "form-needed" || s.admissionStage === "scratch-needed" || s.admissionStage === "portal-ready";
+  const servicePointActionAvailable = s.admissionStage === "admitted" && OBJECTIVES[s.objective]?.id === "admin";
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-[5000] flex gap-2 p-2 md:hidden">
       <div className="hud-panel pointer-events-auto flex-1 space-y-1.5 rounded-2xl p-2.5">
         <div className="flex items-center justify-between">
-          <span className="font-display text-base font-bold text-primary">{formatNaira(s.cash)}</span>
+          <span className="font-display text-base font-bold text-primary">Game {formatNaira(s.cash)}</span>
           <Clock_ compact />
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onPause} aria-label="Pause"><Pause /></Button>
         </div>
         <Stats compact />
-        <p className="truncate text-[11px] font-semibold"><Target className="mr-1 inline h-3 w-3 text-primary" />{OBJECTIVES[s.objective]?.text ?? "Free roam"}</p>
+        <div className="flex items-center gap-2 rounded-xl border border-accent/50 bg-card/90 p-2">
+          <Target className="h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0 flex-1"><p className="text-[9px] font-extrabold uppercase tracking-wider text-primary">Current task</p><p className="text-[10px] font-semibold leading-snug text-foreground">{taskGuide}</p></div>
+          {(portalActionAvailable || servicePointActionAvailable) && <button type="button" onClick={() => onOpenTask(servicePointActionAvailable ? "map" : "admissions")} className="shrink-0 rounded-lg bg-maroon px-2.5 py-2 text-[10px] font-bold text-white">{servicePointActionAvailable ? "Open Map" : "Open Portal"}</button>}
+        </div>
       </div>
       <div className="pointer-events-auto hidden min-[420px]:block"><Minimap nearby={nearby} size={96} /></div>
     </div>
